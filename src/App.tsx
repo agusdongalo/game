@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 type Board = boolean[];
@@ -116,6 +116,7 @@ const solveBoard = (board: Board, size: number): Board | null => {
 };
 
 export default function App() {
+  const bgAudioRef = useRef<HTMLAudioElement | null>(null);
   const [difficultyId, setDifficultyId] = useState("normal");
   const difficulty = getDifficulty(difficultyId);
   const [board, setBoard] = useState<Board>(() =>
@@ -128,6 +129,7 @@ export default function App() {
   const [solution, setSolution] = useState<Board | null>(null);
   const [solutionMessage, setSolutionMessage] = useState("");
   const [showWinModal, setShowWinModal] = useState(false);
+  const [hasCelebrated, setHasCelebrated] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(BEST_MOVES_KEY);
@@ -148,6 +150,30 @@ export default function App() {
   }, [bestMoves]);
 
   useEffect(() => {
+    const audio = new Audio("/bg.wav");
+    audio.loop = true;
+    audio.volume = 1.0;
+    bgAudioRef.current = audio;
+
+    const startMusic = () => {
+      if (!bgAudioRef.current) return;
+      bgAudioRef.current.play().catch(() => undefined);
+      window.removeEventListener("pointerdown", startMusic);
+      window.removeEventListener("keydown", startMusic);
+    };
+
+    window.addEventListener("pointerdown", startMusic);
+    window.addEventListener("keydown", startMusic);
+
+    return () => {
+      window.removeEventListener("pointerdown", startMusic);
+      window.removeEventListener("keydown", startMusic);
+      bgAudioRef.current?.pause();
+      bgAudioRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
     setBoard(makeScrambledBoard(difficulty.size, difficulty.steps));
     setMoves(0);
     setScrambleCount(1);
@@ -155,6 +181,7 @@ export default function App() {
     setSolution(null);
     setSolutionMessage("");
     setShowWinModal(false);
+    setHasCelebrated(false);
   }, [difficulty.id, difficulty.size, difficulty.steps]);
 
   const litCount = useMemo(() => board.filter(Boolean).length, [board]);
@@ -162,10 +189,14 @@ export default function App() {
   const bestForDifficulty = bestMoves[difficulty.id];
 
   useEffect(() => {
-    if (solved) {
+    if (solved && !hasCelebrated) {
       setShowWinModal(true);
+      setHasCelebrated(true);
+      const audio = new Audio("/win.wav");
+      audio.volume = 0.6;
+      audio.play().catch(() => undefined);
     }
-  }, [solved]);
+  }, [hasCelebrated, solved]);
 
   const handleToggle = (row: number, col: number) => {
     if (solved) return;
@@ -194,6 +225,7 @@ export default function App() {
     setSolution(null);
     setSolutionMessage("");
     setShowWinModal(false);
+    setHasCelebrated(false);
   };
 
   const handleReset = () => {
@@ -203,6 +235,7 @@ export default function App() {
     setSolution(null);
     setSolutionMessage("");
     setShowWinModal(false);
+    setHasCelebrated(false);
   };
 
   const handleSolution = () => {
@@ -227,7 +260,7 @@ export default function App() {
   return (
     <div className="workshop">
       {showWinModal ? (
-        <div className="modal-backdrop" role="presentation" onClick={() => setShowWinModal(false)}>
+        <div className="modal-backdrop" role="presentation">
           <div className="fireworks" aria-hidden="true">
             <span className="firework f1 cyan" />
             <span className="firework f2 gold" />
@@ -283,6 +316,11 @@ export default function App() {
             <span className="spark s28 cyan" />
             <span className="spark s29 gold" />
             <span className="spark s30 violet" />
+          </div>
+          <div className="confetti" aria-hidden="true">
+            {Array.from({ length: 32 }).map((_, index) => (
+              <span key={`confetti-${index}`} className={`confetto c${(index % 6) + 1}`} />
+            ))}
           </div>
           <div
             className="modal"
@@ -405,6 +443,7 @@ export default function App() {
           </div>
         </footer>
       </main>
+      <p className="credit">Built by Don Galo Agus.</p>
     </div>
   );
 }
