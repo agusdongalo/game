@@ -130,6 +130,7 @@ export default function App() {
   const [solutionMessage, setSolutionMessage] = useState("");
   const [showWinModal, setShowWinModal] = useState(false);
   const [hasCelebrated, setHasCelebrated] = useState(false);
+  const [showDifficultyPicker, setShowDifficultyPicker] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(BEST_MOVES_KEY);
@@ -197,6 +198,17 @@ export default function App() {
       audio.play().catch(() => undefined);
     }
   }, [hasCelebrated, solved]);
+
+  useEffect(() => {
+    if (!showDifficultyPicker) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowDifficultyPicker(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showDifficultyPicker]);
 
   const handleToggle = (row: number, col: number) => {
     if (solved) return;
@@ -360,16 +372,15 @@ export default function App() {
               <div className="control-row">
                 <label className="control">
                   <span>Difficulty</span>
-                  <select
-                    value={difficulty.id}
-                    onChange={(event) => setDifficultyId(event.target.value)}
+                  <button
+                    type="button"
+                    className="difficulty-trigger"
+                    onClick={() => setShowDifficultyPicker(true)}
+                    aria-haspopup="dialog"
+                    aria-expanded={showDifficultyPicker}
                   >
-                    {DIFFICULTIES.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    {difficulty.label}
+                  </button>
                 </label>
                 <button type="button" className="action solve-button" onClick={handleSolution}>
                   {showSolution ? "Hide Solution" : "Show Solution"}
@@ -443,6 +454,49 @@ export default function App() {
           </div>
         </footer>
       </main>
+      {showDifficultyPicker ? (
+        <div
+          className="picker-backdrop"
+          role="presentation"
+          onClick={() => setShowDifficultyPicker(false)}
+        >
+          <div
+            className="picker-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Select difficulty"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="picker-eyebrow">Select Difficulty</p>
+            <div className="picker-options" role="listbox" aria-label="Difficulty options">
+              {DIFFICULTIES.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="option"
+                  aria-selected={option.id === difficulty.id}
+                  className={`picker-option ${
+                    option.id === difficulty.id ? "active" : ""
+                  }`}
+                  onClick={() => {
+                    setDifficultyId(option.id);
+                    setShowDifficultyPicker(false);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="picker-close"
+              onClick={() => setShowDifficultyPicker(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
       <p className="credit">Built by Don Galo Agus.</p>
     </div>
   );
